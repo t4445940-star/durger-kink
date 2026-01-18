@@ -177,6 +177,16 @@
         .checkout-btn:disabled {
             background: #ccc;
             cursor: not-allowed;
+            opacity: 0.6;
+        }
+        
+        .checkout-btn.has-items {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
         }
 
         .empty-cart {
@@ -306,10 +316,24 @@
 
             const checkoutBtn = document.getElementById('checkoutBtn');
             checkoutBtn.disabled = totalItems === 0;
+            
+            // Add visual feedback
+            if (totalItems > 0) {
+                checkoutBtn.classList.add('has-items');
+                checkoutBtn.textContent = `Checkout (${totalItems} items)`;
+            } else {
+                checkoutBtn.classList.remove('has-items');
+                checkoutBtn.textContent = 'Checkout';
+            }
+            
+            console.log(`Cart updated: ${totalItems} items, ${totalPrice} stars`);
         }
 
         // Checkout
         document.getElementById('checkoutBtn').addEventListener('click', function() {
+            console.log('Checkout button clicked!');
+            console.log('Current cart:', cart);
+            
             const items = [];
             let total = 0;
 
@@ -325,6 +349,11 @@
                 total += item.price * quantity;
             }
 
+            if (items.length === 0) {
+                alert('Please add items to cart first!');
+                return;
+            }
+
             // Send data to bot
             const orderData = {
                 items: items,
@@ -333,7 +362,18 @@
             };
 
             console.log('Sending order to bot:', orderData);
-            tg.sendData(JSON.stringify(orderData));
+            
+            // Check if we're in Telegram
+            if (window.Telegram && window.Telegram.WebApp) {
+                console.log('Telegram WebApp detected, sending data...');
+                tg.sendData(JSON.stringify(orderData));
+                
+                // Show feedback
+                alert('Order sent! Please check your bot chat.');
+            } else {
+                console.error('Not running in Telegram WebApp!');
+                alert('This app must be opened through Telegram bot!');
+            }
         });
 
         // Initial render - THIS IS IMPORTANT!
