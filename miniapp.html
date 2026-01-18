@@ -201,25 +201,9 @@
                 padding-bottom: 20px;
             }
         }
-
-        #debug {
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            background: rgba(0,0,0,0.8);
-            color: white;
-            padding: 10px;
-            border-radius: 5px;
-            font-size: 10px;
-            max-width: 300px;
-            z-index: 9999;
-            display: none;
-        }
     </style>
 </head>
 <body>
-    <div id="debug"></div>
-
     <div class="container">
         <div class="header">
             <h1>🍔 Food Menu</h1>
@@ -246,33 +230,15 @@
     </div>
 
     <script>
-        // Debug logger
-        const debugEl = document.getElementById('debug');
-        function debug(msg) {
-            console.log(msg);
-            debugEl.innerHTML += msg + '<br>';
-            debugEl.style.display = 'block';
-        }
-
         // Initialize Telegram Web App
         let tg = window.Telegram?.WebApp;
         
         if (!tg) {
-            debug('❌ Telegram WebApp not available!');
             alert('This app must be opened from Telegram bot!');
         } else {
-            debug('✅ Telegram WebApp detected');
-            debug('Version: ' + tg.version);
-            debug('Platform: ' + tg.platform);
-            
-            // Expand and prepare
             tg.expand();
             tg.ready();
-            
-            // Enable closing confirmation
             tg.enableClosingConfirmation();
-            
-            debug('WebApp initialized');
         }
 
         // Menu items (must match your bot's menu_items)
@@ -371,7 +337,6 @@
                     tg.MainButton.textColor = '#ffffff';
                     tg.MainButton.show();
                     tg.MainButton.enable();
-                    debug('MainButton updated: ' + totalPrice + ' stars');
                 } else {
                     tg.MainButton.hide();
                 }
@@ -380,8 +345,6 @@
 
         // Checkout function
         function doCheckout() {
-            debug('=== CHECKOUT STARTED ===');
-            
             const items = [];
             let total = 0;
 
@@ -398,7 +361,6 @@
             }
 
             if (items.length === 0) {
-                debug('Cart is empty');
                 if (tg) tg.showAlert('Please add items to cart first!');
                 return;
             }
@@ -411,34 +373,26 @@
             };
 
             const dataString = JSON.stringify(orderData);
-            debug('Sending data: ' + dataString.substring(0, 100) + '...');
             
             try {
                 // Show progress on MainButton
                 if (tg && tg.MainButton) {
                     tg.MainButton.showProgress();
-                    debug('MainButton showing progress');
                 }
                 
                 // Send data to bot
                 if (tg) {
-                    debug('Calling tg.sendData()...');
                     tg.sendData(dataString);
-                    debug('✅ sendData() called successfully');
                     
-                    // Data sent - the mini app should close automatically
-                    // If not, close after short delay
+                    // Close after short delay
                     setTimeout(() => {
-                        debug('Closing mini app...');
                         tg.close();
                     }, 500);
                 } else {
-                    debug('❌ Telegram WebApp not available');
                     alert('Telegram WebApp not available!\n\nOrder data:\n' + dataString);
                 }
                 
             } catch (error) {
-                debug('❌ ERROR: ' + error.message);
                 console.error('Checkout error:', error);
                 
                 if (tg) {
@@ -455,14 +409,11 @@
         
         // Telegram MainButton click (mobile)
         if (tg && tg.MainButton) {
-            debug('Registering MainButton click handler');
             tg.MainButton.onClick(doCheckout);
         }
 
         // Initial render
-        debug('Rendering menu...');
         renderMenu();
-        debug('Menu rendered with ' + Object.keys(menuItems).length + ' items');
     </script>
 </body>
 </html>
