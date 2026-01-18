@@ -332,9 +332,16 @@
             // Update Telegram MainButton (for mobile)
             if (tg && tg.MainButton) {
                 if (totalItems > 0) {
+                    // Hide first to force refresh
+                    tg.MainButton.hide();
+                    // Then show with new text
                     tg.MainButton.setText(`Pay ${totalPrice} ⭐`);
-                    tg.MainButton.color = '#667eea';
-                    tg.MainButton.textColor = '#ffffff';
+                    tg.MainButton.setParams({
+                        color: '#667eea',
+                        text_color: '#ffffff',
+                        is_active: true,
+                        is_visible: true
+                    });
                     tg.MainButton.show();
                     tg.MainButton.enable();
                 } else {
