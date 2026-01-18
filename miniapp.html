@@ -16,7 +16,7 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: var(--tg-theme-bg-color, #ffffff);
             color: var(--tg-theme-text-color, #000000);
-            padding-bottom: 80px;
+            padding-bottom: 100px;
         }
 
         .container {
@@ -199,7 +199,7 @@
         </div>
 
         <div class="menu-grid" id="menuGrid">
-            <!-- Menu items will be inserted here -->
+            <!-- Menu items will be inserted here by JavaScript -->
         </div>
 
         <div id="emptyState" class="empty-cart" style="display: none;">
@@ -226,7 +226,6 @@
         // Initialize Telegram Web App
         const tg = window.Telegram.WebApp;
         tg.expand();
-        tg.MainButton.hide();
 
         // Menu items (must match your bot's menu_items)
         const menuItems = {
@@ -273,7 +272,9 @@
         window.increaseQuantity = function(itemId) {
             cart[itemId] = (cart[itemId] || 0) + 1;
             renderMenu();
-            tg.HapticFeedback.impactOccurred('light');
+            if (tg.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('light');
+            }
         };
 
         // Decrease quantity
@@ -284,7 +285,9 @@
                     delete cart[itemId];
                 }
                 renderMenu();
-                tg.HapticFeedback.impactOccurred('light');
+                if (tg.HapticFeedback) {
+                    tg.HapticFeedback.impactOccurred('light');
+                }
             }
         };
 
@@ -303,14 +306,6 @@
 
             const checkoutBtn = document.getElementById('checkoutBtn');
             checkoutBtn.disabled = totalItems === 0;
-
-            if (totalItems === 0) {
-                document.getElementById('emptyState').style.display = 'block';
-                document.getElementById('menuGrid').style.display = 'none';
-            } else {
-                document.getElementById('emptyState').style.display = 'none';
-                document.getElementById('menuGrid').style.display = 'grid';
-            }
         }
 
         // Checkout
@@ -337,18 +332,16 @@
                 timestamp: new Date().toISOString()
             };
 
-            console.log('Sending order:', orderData);
+            console.log('Sending order to bot:', orderData);
             tg.sendData(JSON.stringify(orderData));
-            tg.close();
         });
 
-        // Initial render
+        // Initial render - THIS IS IMPORTANT!
+        console.log('Rendering menu with items:', menuItems);
         renderMenu();
 
-        // Set theme colors
-        if (tg.themeParams.bg_color) {
-            document.body.style.setProperty('--tg-theme-bg-color', tg.themeParams.bg_color);
-        }
+        // Ready notification
+        tg.ready();
     </script>
 </body>
 </html>
