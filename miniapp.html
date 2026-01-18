@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Food Menu</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
@@ -10,6 +10,7 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
@@ -17,6 +18,7 @@
             background: var(--tg-theme-bg-color, #ffffff);
             color: var(--tg-theme-text-color, #000000);
             padding-bottom: 100px;
+            overflow-x: hidden;
         }
 
         .container {
@@ -110,6 +112,7 @@
             align-items: center;
             justify-content: center;
             transition: all 0.2s;
+            user-select: none;
         }
 
         .quantity-btn:active {
@@ -189,19 +192,34 @@
             50% { transform: scale(1.02); }
         }
 
-        .empty-cart {
-            text-align: center;
-            padding: 40px 20px;
-            color: var(--tg-theme-hint-color, #999);
+        /* Hide footer on mobile when MainButton is used */
+        @media (max-width: 768px) {
+            .cart-footer {
+                display: none;
+            }
+            body {
+                padding-bottom: 20px;
+            }
         }
 
-        .empty-cart-icon {
-            font-size: 64px;
-            margin-bottom: 16px;
+        #debug {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 10px;
+            max-width: 300px;
+            z-index: 9999;
+            display: none;
         }
     </style>
 </head>
 <body>
+    <div id="debug"></div>
+
     <div class="container">
         <div class="header">
             <h1>🍔 Food Menu</h1>
@@ -210,11 +228,6 @@
 
         <div class="menu-grid" id="menuGrid">
             <!-- Menu items will be inserted here by JavaScript -->
-        </div>
-
-        <div id="emptyState" class="empty-cart" style="display: none;">
-            <div class="empty-cart-icon">🛒</div>
-            <p>Your cart is empty<br>Add some delicious items!</p>
         </div>
     </div>
 
@@ -233,9 +246,34 @@
     </div>
 
     <script>
+        // Debug logger
+        const debugEl = document.getElementById('debug');
+        function debug(msg) {
+            console.log(msg);
+            debugEl.innerHTML += msg + '<br>';
+            debugEl.style.display = 'block';
+        }
+
         // Initialize Telegram Web App
-        const tg = window.Telegram.WebApp;
-        tg.expand();
+        let tg = window.Telegram?.WebApp;
+        
+        if (!tg) {
+            debug('❌ Telegram WebApp not available!');
+            alert('This app must be opened from Telegram bot!');
+        } else {
+            debug('✅ Telegram WebApp detected');
+            debug('Version: ' + tg.version);
+            debug('Platform: ' + tg.platform);
+            
+            // Expand and prepare
+            tg.expand();
+            tg.ready();
+            
+            // Enable closing confirmation
+            tg.enableClosingConfirmation();
+            
+            debug('WebApp initialized');
+        }
 
         // Menu items (must match your bot's menu_items)
         const menuItems = {
@@ -267,41 +305,39 @@
                         <div class="item-price">${item.price} ⭐</div>
                     </div>
                     <div class="item-controls">
-                        <button class="quantity-btn" onclick="decreaseQuantity('${id}')" ${quantity === 0 ? 'disabled' : ''}>−</button>
+                        <button class="quantity-btn" data-action="decrease" data-id="${id}" ${quantity === 0 ? 'disabled' : ''}>−</button>
                         <div class="quantity">${quantity}</div>
-                        <button class="quantity-btn" onclick="increaseQuantity('${id}')">+</button>
+                        <button class="quantity-btn" data-action="increase" data-id="${id}">+</button>
                     </div>
                 `;
                 menuGrid.appendChild(menuItem);
             }
 
+            // Add event listeners
+            document.querySelectorAll('.quantity-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const action = this.dataset.action;
+                    const id = this.dataset.id;
+                    
+                    if (action === 'increase') {
+                        cart[id] = (cart[id] || 0) + 1;
+                    } else if (action === 'decrease' && cart[id] > 0) {
+                        cart[id]--;
+                        if (cart[id] === 0) delete cart[id];
+                    }
+                    
+                    if (tg && tg.HapticFeedback) {
+                        tg.HapticFeedback.impactOccurred('light');
+                    }
+                    
+                    renderMenu();
+                });
+            });
+
             updateCartSummary();
         }
 
-        // Increase quantity
-        window.increaseQuantity = function(itemId) {
-            cart[itemId] = (cart[itemId] || 0) + 1;
-            renderMenu();
-            if (tg.HapticFeedback) {
-                tg.HapticFeedback.impactOccurred('light');
-            }
-        };
-
-        // Decrease quantity
-        window.decreaseQuantity = function(itemId) {
-            if (cart[itemId] > 0) {
-                cart[itemId]--;
-                if (cart[itemId] === 0) {
-                    delete cart[itemId];
-                }
-                renderMenu();
-                if (tg.HapticFeedback) {
-                    tg.HapticFeedback.impactOccurred('light');
-                }
-            }
-        };
-
-        // Update cart summary
+        // Update cart summary and MainButton
         function updateCartSummary() {
             let totalItems = 0;
             let totalPrice = 0;
@@ -315,24 +351,36 @@
             document.getElementById('totalAmount').textContent = totalPrice;
 
             const checkoutBtn = document.getElementById('checkoutBtn');
-            checkoutBtn.disabled = totalItems === 0;
             
-            // Add visual feedback
+            // Update regular button (for desktop)
             if (totalItems > 0) {
+                checkoutBtn.disabled = false;
                 checkoutBtn.classList.add('has-items');
                 checkoutBtn.textContent = `Checkout (${totalItems} items)`;
             } else {
+                checkoutBtn.disabled = true;
                 checkoutBtn.classList.remove('has-items');
                 checkoutBtn.textContent = 'Checkout';
             }
             
-            console.log(`Cart updated: ${totalItems} items, ${totalPrice} stars`);
+            // Update Telegram MainButton (for mobile)
+            if (tg && tg.MainButton) {
+                if (totalItems > 0) {
+                    tg.MainButton.setText(`Pay ${totalPrice} ⭐`);
+                    tg.MainButton.color = '#667eea';
+                    tg.MainButton.textColor = '#ffffff';
+                    tg.MainButton.show();
+                    tg.MainButton.enable();
+                    debug('MainButton updated: ' + totalPrice + ' stars');
+                } else {
+                    tg.MainButton.hide();
+                }
+            }
         }
 
-        // Checkout
-        document.getElementById('checkoutBtn').addEventListener('click', function() {
-            console.log('Checkout button clicked!');
-            console.log('Current cart:', cart);
+        // Checkout function
+        function doCheckout() {
+            debug('=== CHECKOUT STARTED ===');
             
             const items = [];
             let total = 0;
@@ -350,38 +398,71 @@
             }
 
             if (items.length === 0) {
-                alert('Please add items to cart first!');
+                debug('Cart is empty');
+                if (tg) tg.showAlert('Please add items to cart first!');
                 return;
             }
 
-            // Send data to bot
+            // Prepare order data
             const orderData = {
                 items: items,
                 total: total,
                 timestamp: new Date().toISOString()
             };
 
-            console.log('Sending order to bot:', orderData);
+            const dataString = JSON.stringify(orderData);
+            debug('Sending data: ' + dataString.substring(0, 100) + '...');
             
-            // Check if we're in Telegram
-            if (window.Telegram && window.Telegram.WebApp) {
-                console.log('Telegram WebApp detected, sending data...');
-                tg.sendData(JSON.stringify(orderData));
+            try {
+                // Show progress on MainButton
+                if (tg && tg.MainButton) {
+                    tg.MainButton.showProgress();
+                    debug('MainButton showing progress');
+                }
                 
-                // Show feedback
-                alert('Order sent! Please check your bot chat.');
-            } else {
-                console.error('Not running in Telegram WebApp!');
-                alert('This app must be opened through Telegram bot!');
+                // Send data to bot
+                if (tg) {
+                    debug('Calling tg.sendData()...');
+                    tg.sendData(dataString);
+                    debug('✅ sendData() called successfully');
+                    
+                    // Data sent - the mini app should close automatically
+                    // If not, close after short delay
+                    setTimeout(() => {
+                        debug('Closing mini app...');
+                        tg.close();
+                    }, 500);
+                } else {
+                    debug('❌ Telegram WebApp not available');
+                    alert('Telegram WebApp not available!\n\nOrder data:\n' + dataString);
+                }
+                
+            } catch (error) {
+                debug('❌ ERROR: ' + error.message);
+                console.error('Checkout error:', error);
+                
+                if (tg) {
+                    if (tg.MainButton) tg.MainButton.hideProgress();
+                    tg.showAlert('Error: ' + error.message);
+                } else {
+                    alert('Error: ' + error.message);
+                }
             }
-        });
+        }
 
-        // Initial render - THIS IS IMPORTANT!
-        console.log('Rendering menu with items:', menuItems);
+        // Regular checkout button click (desktop)
+        document.getElementById('checkoutBtn').addEventListener('click', doCheckout);
+        
+        // Telegram MainButton click (mobile)
+        if (tg && tg.MainButton) {
+            debug('Registering MainButton click handler');
+            tg.MainButton.onClick(doCheckout);
+        }
+
+        // Initial render
+        debug('Rendering menu...');
         renderMenu();
-
-        // Ready notification
-        tg.ready();
+        debug('Menu rendered with ' + Object.keys(menuItems).length + ' items');
     </script>
 </body>
 </html>
