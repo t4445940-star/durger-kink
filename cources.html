@@ -78,6 +78,9 @@
             font-size: 20px;
             font-weight: 700;
             color: var(--tg-theme-button-color, #3390ec);
+            display: flex;
+            align-items: center;
+            gap: 4px;
         }
 
         .course-card.selected .course-price {
@@ -116,94 +119,142 @@
             align-items: center;
             gap: 4px;
         }
-
-        .checkout-btn {
-            position: fixed;
-            bottom: 16px;
-            left: 16px;
-            right: 16px;
-            background: var(--tg-theme-button-color, #3390ec);
-            color: var(--tg-theme-button-text-color, #ffffff);
-            border: none;
-            border-radius: 12px;
-            padding: 16px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            display: none;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        }
-
-        .checkout-btn.visible {
-            display: block;
-        }
-
-        .checkout-btn:active {
-            transform: scale(0.98);
-        }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>📚 Online Courses</h1>
-        <p>Select a course to purchase</p>
+        <p>Select a course to purchase with Telegram Stars ⭐</p>
     </div>
 
     <div class="courses-grid" id="coursesGrid"></div>
 
-    <button class="checkout-btn" id="checkoutBtn">
-        Checkout
-    </button>
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
 
-<script>
-    const tg = window.Telegram.WebApp;
-    tg.expand();
+        // Configure the Main Button
+        tg.MainButton.setText("CHECKOUT");
+        tg.MainButton.textColor = "#ffffff";
+        tg.MainButton.color = "#3390ec";
 
-    // Configure the Main Button
-    tg.MainButton.setText("CHECKOUT");
-    tg.MainButton.textColor = "#ffffff";
-    tg.MainButton.color = "#3390ec";
+        let selectedCourse = null;
 
-    let selectedCourse = null;
+        const courses = [
+            {
+                id: 'web-dev-101',
+                title: 'Web Development Bootcamp',
+                instructor: 'Sarah Johnson',
+                price: 100, // Price in Telegram Stars
+                description: 'Complete guide to modern web development with HTML, CSS, JavaScript, and React.',
+                duration: '12 weeks',
+                lessons: '48 lessons',
+                level: 'Beginner'
+            },
+            {
+                id: 'python-masters',
+                title: 'Python Mastery Course',
+                instructor: 'Michael Chen',
+                price: 80, // Price in Telegram Stars
+                description: 'Master Python programming from basics to advanced topics including Django and Flask.',
+                duration: '10 weeks',
+                lessons: '40 lessons',
+                level: 'Intermediate'
+            },
+            {
+                id: 'data-science',
+                title: 'Data Science & ML',
+                instructor: 'Dr. Emily Rodriguez',
+                price: 120, // Price in Telegram Stars
+                description: 'Learn data analysis, visualization, and machine learning with Python and TensorFlow.',
+                duration: '14 weeks',
+                lessons: '56 lessons',
+                level: 'Advanced'
+            },
+            {
+                id: 'ui-ux-design',
+                title: 'UI/UX Design Fundamentals',
+                instructor: 'Alex Thompson',
+                price: 60, // Price in Telegram Stars
+                description: 'Create stunning user interfaces and experiences with Figma and modern design principles.',
+                duration: '8 weeks',
+                lessons: '32 lessons',
+                level: 'Beginner'
+            },
+            {
+                id: 'mobile-dev',
+                title: 'Mobile App Development',
+                instructor: 'James Park',
+                price: 90, // Price in Telegram Stars
+                description: 'Build native mobile apps for iOS and Android using React Native and Flutter.',
+                duration: '12 weeks',
+                lessons: '45 lessons',
+                level: 'Intermediate'
+            }
+        ];
 
-    // ... (keep your existing courses array and formatPrice function) ...
+        function formatPrice(price) {
+            return `${price} ⭐`;
+        }
 
-    function selectCourse(courseId) {
-        document.querySelectorAll('.course-card').forEach(card => {
-            card.classList.remove('selected');
+        function renderCourses() {
+            const grid = document.getElementById('coursesGrid');
+            grid.innerHTML = courses.map(course => `
+                <div class="course-card" data-id="${course.id}">
+                    <div class="course-header">
+                        <div>
+                            <div class="course-title">${course.title}</div>
+                            <div class="course-instructor">👨‍🏫 ${course.instructor}</div>
+                        </div>
+                        <div class="course-price">${formatPrice(course.price)}</div>
+                    </div>
+                    <div class="course-description">${course.description}</div>
+                    <div class="course-details">
+                        <div class="detail-item">⏱️ ${course.duration}</div>
+                        <div class="detail-item">📖 ${course.lessons}</div>
+                        <div class="detail-item">📊 ${course.level}</div>
+                    </div>
+                </div>
+            `).join('');
+
+            document.querySelectorAll('.course-card').forEach(card => {
+                card.addEventListener('click', () => selectCourse(card.dataset.id));
+            });
+        }
+
+        function selectCourse(courseId) {
+            document.querySelectorAll('.course-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+
+            const card = document.querySelector(`[data-id="${courseId}"]`);
+            card.classList.add('selected');
+
+            selectedCourse = courses.find(c => c.id === courseId);
+
+            // Use Telegram's Native Main Button instead of custom HTML button
+            tg.MainButton.setText(`Buy ${selectedCourse.title} - ${formatPrice(selectedCourse.price)}`);
+            tg.MainButton.show();
+        }
+
+        // This listener handles the click on the native Telegram button
+        tg.onEvent('mainButtonClicked', function(){
+            if (selectedCourse) {
+                try {
+                    const dataToSend = {
+                        action: 'purchase_course',
+                        course: selectedCourse
+                    };
+                    
+                    tg.sendData(JSON.stringify(dataToSend));
+                    tg.close(); // Close the app after sending data
+                } catch (e) {
+                    tg.showAlert("Error: Please open the app via the menu button.");
+                }
+            }
         });
 
-        const card = document.querySelector(`[data-id="${courseId}"]`);
-        card.classList.add('selected');
-
-        selectedCourse = courses.find(c => c.id === courseId);
-
-        // Instead of showing a custom HTML button, we use Telegram's Native Main Button
-        tg.MainButton.setText(`Buy ${selectedCourse.title} - $${(selectedCourse.price/100).toFixed(2)}`);
-        tg.MainButton.show();
-    }
-
-    // This listener handles the click on the native Telegram button
-    tg.onEvent('mainButtonClicked', function(){
-        if (selectedCourse) {
-            // We use a small hack for Inline Buttons: 
-            // Since sendData might fail, we notify the user
-            try {
-                const dataToSend = {
-                    action: 'purchase_complete',
-                    courseCount: 1,
-                    amount: selectedCourse.price / 100 // Converting to stars/credits
-                };
-                
-                tg.sendData(JSON.stringify(dataToSend));
-                tg.close(); // Close the app after sending data
-            } catch (e) {
-                tg.showAlert("Error: Please open the app via the menu button.");
-            }
-        }
-    });
-
-    renderCourses();
-</script>
+        renderCourses();
+    </script>
 </body>
 </html>
