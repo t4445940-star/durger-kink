@@ -130,13 +130,15 @@
     <div class="courses-grid" id="coursesGrid"></div>
 
     <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand();
+        const tg = window.Telegram?.WebApp || window.Telegram || {};
+        if (tg.expand) tg.expand();
 
         // Configure the Main Button
-        tg.MainButton.setText("CHECKOUT");
-        tg.MainButton.textColor = "#ffffff";
-        tg.MainButton.color = "#3390ec";
+        if (tg.MainButton) {
+            tg.MainButton.setText("CHECKOUT");
+            tg.MainButton.textColor = "#ffffff";
+            tg.MainButton.color = "#3390ec";
+        }
 
         let selectedCourse = null;
 
@@ -238,23 +240,43 @@
         }
 
         // This listener handles the click on the native Telegram button
-        tg.onEvent('mainButtonClicked', function(){
-            if (selectedCourse) {
-                try {
-                    const dataToSend = {
-                        action: 'purchase_course',
-                        course: selectedCourse
-                    };
-                    
-                    tg.sendData(JSON.stringify(dataToSend));
-                    tg.close(); // Close the app after sending data
-                } catch (e) {
-                    tg.showAlert("Error: Please open the app via the menu button.");
+        if (tg.onEvent) {
+            tg.onEvent('mainButtonClicked', function(){
+                if (selectedCourse) {
+                    try {
+                        const dataToSend = {
+                            action: 'purchase_course',
+                            course: selectedCourse
+                        };
+                        
+                        if (tg.sendData) {
+                            tg.sendData(JSON.stringify(dataToSend));
+                        }
+                        if (tg.close) {
+                            tg.close(); // Close the app after sending data
+                        }
+                    } catch (e) {
+                        if (tg.showAlert) {
+                            tg.showAlert("Error: Please open the app via the menu button.");
+                        } else {
+                            alert("Error: Please open the app via the menu button.");
+                        }
+                    }
                 }
-            }
-        });
+            });
+        }
 
-        renderCourses();
+        // Initialize and render courses
+        document.addEventListener('DOMContentLoaded', function() {
+            renderCourses();
+        });
+        
+        // Also call immediately in case DOM is already loaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', renderCourses);
+        } else {
+            renderCourses();
+        }
     </script>
 </body>
 </html>
