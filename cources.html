@@ -155,124 +155,55 @@
         Checkout
     </button>
 
-    <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand();
+<script>
+    const tg = window.Telegram.WebApp;
+    tg.expand();
 
-        const courses = [
-            {
-                id: 'web-dev-101',
-                title: 'Web Development Bootcamp',
-                instructor: 'Sarah Johnson',
-                price: 4999,
-                currency: 'USD',
-                description: 'Complete guide to modern web development with HTML, CSS, JavaScript, and React.',
-                duration: '12 weeks',
-                lessons: '48 lessons',
-                level: 'Beginner'
-            },
-            {
-                id: 'python-masters',
-                title: 'Python Mastery Course',
-                instructor: 'Michael Chen',
-                price: 3999,
-                currency: 'USD',
-                description: 'Master Python programming from basics to advanced topics including Django and Flask.',
-                duration: '10 weeks',
-                lessons: '40 lessons',
-                level: 'Intermediate'
-            },
-            {
-                id: 'data-science',
-                title: 'Data Science & ML',
-                instructor: 'Dr. Emily Rodriguez',
-                price: 5999,
-                currency: 'USD',
-                description: 'Learn data analysis, visualization, and machine learning with Python and TensorFlow.',
-                duration: '14 weeks',
-                lessons: '56 lessons',
-                level: 'Advanced'
-            },
-            {
-                id: 'ui-ux-design',
-                title: 'UI/UX Design Fundamentals',
-                instructor: 'Alex Thompson',
-                price: 2999,
-                currency: 'USD',
-                description: 'Create stunning user interfaces and experiences with Figma and modern design principles.',
-                duration: '8 weeks',
-                lessons: '32 lessons',
-                level: 'Beginner'
-            },
-            {
-                id: 'mobile-dev',
-                title: 'Mobile App Development',
-                instructor: 'James Park',
-                price: 4499,
-                currency: 'USD',
-                description: 'Build native mobile apps for iOS and Android using React Native and Flutter.',
-                duration: '12 weeks',
-                lessons: '45 lessons',
-                level: 'Intermediate'
-            }
-        ];
+    // Configure the Main Button
+    tg.MainButton.setText("CHECKOUT");
+    tg.MainButton.textColor = "#ffffff";
+    tg.MainButton.color = "#3390ec";
 
-        let selectedCourse = null;
+    let selectedCourse = null;
 
-        function formatPrice(price, currency) {
-            return `$${(price / 100).toFixed(2)}`;
-        }
+    // ... (keep your existing courses array and formatPrice function) ...
 
-        function renderCourses() {
-            const grid = document.getElementById('coursesGrid');
-            grid.innerHTML = courses.map(course => `
-                <div class="course-card" data-id="${course.id}">
-                    <div class="course-header">
-                        <div>
-                            <div class="course-title">${course.title}</div>
-                            <div class="course-instructor">👨‍🏫 ${course.instructor}</div>
-                        </div>
-                        <div class="course-price">${formatPrice(course.price, course.currency)}</div>
-                    </div>
-                    <div class="course-description">${course.description}</div>
-                    <div class="course-details">
-                        <div class="detail-item">⏱️ ${course.duration}</div>
-                        <div class="detail-item">📖 ${course.lessons}</div>
-                        <div class="detail-item">📊 ${course.level}</div>
-                    </div>
-                </div>
-            `).join('');
-
-            document.querySelectorAll('.course-card').forEach(card => {
-                card.addEventListener('click', () => selectCourse(card.dataset.id));
-            });
-        }
-
-        function selectCourse(courseId) {
-            document.querySelectorAll('.course-card').forEach(card => {
-                card.classList.remove('selected');
-            });
-
-            const card = document.querySelector(`[data-id="${courseId}"]`);
-            card.classList.add('selected');
-
-            selectedCourse = courses.find(c => c.id === courseId);
-
-            const btn = document.getElementById('checkoutBtn');
-            btn.classList.add('visible');
-            btn.textContent = `Checkout - ${formatPrice(selectedCourse.price, selectedCourse.currency)}`;
-        }
-
-        document.getElementById('checkoutBtn').addEventListener('click', () => {
-            if (selectedCourse) {
-                tg.sendData(JSON.stringify({
-                    action: 'checkout',
-                    course: selectedCourse
-                }));
-            }
+    function selectCourse(courseId) {
+        document.querySelectorAll('.course-card').forEach(card => {
+            card.classList.remove('selected');
         });
 
-        renderCourses();
-    </script>
+        const card = document.querySelector(`[data-id="${courseId}"]`);
+        card.classList.add('selected');
+
+        selectedCourse = courses.find(c => c.id === courseId);
+
+        // Instead of showing a custom HTML button, we use Telegram's Native Main Button
+        tg.MainButton.setText(`Buy ${selectedCourse.title} - $${(selectedCourse.price/100).toFixed(2)}`);
+        tg.MainButton.show();
+    }
+
+    // This listener handles the click on the native Telegram button
+    tg.onEvent('mainButtonClicked', function(){
+        if (selectedCourse) {
+            // We use a small hack for Inline Buttons: 
+            // Since sendData might fail, we notify the user
+            try {
+                const dataToSend = {
+                    action: 'purchase_complete',
+                    courseCount: 1,
+                    amount: selectedCourse.price / 100 // Converting to stars/credits
+                };
+                
+                tg.sendData(JSON.stringify(dataToSend));
+                tg.close(); // Close the app after sending data
+            } catch (e) {
+                tg.showAlert("Error: Please open the app via the menu button.");
+            }
+        }
+    });
+
+    renderCourses();
+</script>
 </body>
 </html>
