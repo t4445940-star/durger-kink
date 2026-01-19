@@ -230,13 +230,25 @@
             });
 
             const card = document.querySelector(`[data-id="${courseId}"]`);
-            card.classList.add('selected');
+            if (card) {
+                card.classList.add('selected');
+            }
 
             selectedCourse = courses.find(c => c.id === courseId);
 
             // Use Telegram's Native Main Button instead of custom HTML button
-            tg.MainButton.setText(`Buy ${selectedCourse.title} - ${formatPrice(selectedCourse.price)}`);
-            tg.MainButton.show();
+            if (selectedCourse && tg.MainButton) {
+                const buttonText = `Buy ${selectedCourse.title} - ${formatPrice(selectedCourse.price)}`;
+                tg.MainButton.setText(buttonText);
+                tg.MainButton.show();
+                
+                // Force update by hiding and showing again
+                tg.MainButton.hide();
+                setTimeout(() => {
+                    tg.MainButton.setText(buttonText);
+                    tg.MainButton.show();
+                }, 10);
+            }
         }
 
         // This listener handles the click on the native Telegram button
